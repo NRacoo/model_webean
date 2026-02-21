@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Deteksi Biji</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #0f1117;
+    color: #e0e0e0;
+    min-height: 100vh;
+    padding: 24px;
+  }
+
+  h1 {
+    text-align: center;
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+    color: #fff;
+    letter-spacing: 1px;
+  }
+
+  .subtitle {
+    text-align: center;
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 24px;
+  }
+
+  /* Status bar */
+  #status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dot {
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    background: #555;
+    transition: background 0.3s;
+  }
+  .dot.connected   { background: #22c55e; box-shadow: 0 0 8px #22c55e; }
+  .dot.disconnected{ background: #ef4444; }
+  #status-text { font-size: 0.9rem; color: #aaa; }
+
+  /* Cards grid */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto 28px;
+  }
+
+  .card {
+    background: #1a1d27;
+    border-radius: 14px;
+    padding: 22px 18px;
+    text-align: center;
+    border: 1px solid #2a2d3a;
+    transition: transform 0.15s;
+  }
+  .card:hover { transform: translateY(-2px); }
+
+  .card .label {
+    font-size: 0.8rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .card .value {
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .card.baik   .value { color: #22c55e; }
+  .card.cacat  .value { color: #ef4444; }
+  .card.fps    .value { color: #38bdf8; font-size: 2rem; }
+  .card.frame  .value { color: #a78bfa; font-size: 2rem; }
+
+  /* Total section */
+  .totals {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    max-width: 900px;
+    margin: 0 auto 28px;
+  }
+  .total-card {
+    background: #1a1d27;
+    border-radius: 14px;
+    padding: 18px;
+    border: 1px solid #2a2d3a;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .total-icon {
+    font-size: 2rem;
+    width: 52px; height: 52px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .total-card.baik  .total-icon { background: #052e16; }
+  .total-card.cacat .total-icon { background: #2d0a0a; }
+  .total-info .label { font-size: 0.75rem; color: #888; margin-bottom: 4px; }
+  .total-info .value { font-size: 1.8rem; font-weight: 700; }
+  .total-card.baik  .value { color: #22c55e; }
+  .total-card.cacat .value { color: #ef4444; }
+
+  /* Log */
+  .log-section {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .log-section h2 {
+    font-size: 0.95rem;
+    color: #888;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  #log {
+    background: #1a1d27;
+    border: 1px solid #2a2d3a;
+    border-radius: 10px;
+    padding: 12px;
+    height: 200px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: #aaa;
+  }
+  #log .entry { padding: 3px 0; border-bottom: 1px solid #22253000; }
+  #log .entry.cacat-entry { color: #fca5a5; }
+  #log .entry.baik-entry  { color: #86efac; }
+
+  /* Reset btn */
+  .actions {
+    max-width: 900px;
+    margin: 16px auto 0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  button {
+    padding: 8px 18px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: opacity 0.2s;
+  }
+  button:hover { opacity: 0.85; }
+  #btn-reset { background: #374151; color: #e0e0e0; }
+  #btn-ws    { background: #1d4ed8; color: #fff; }
+</style>
+</head>
+<body>
+
+<h1>🌱 Dashboard Deteksi Biji</h1>
+<p class="subtitle">Realtime monitoring via WebSocket</p>
+
+<div id="status-bar">
+  <div class="dot disconnected" id="dot"></div>
+  <span id="status-text">Menghubungkan ke server...</span>
+</div>
+
+<!-- Kartu per frame -->
+<div class="cards">
+  <div class="card baik">
+    <div class="label">Baik (frame ini)</div>
+    <div class="value" id="val-baik">—</div>
+  </div>
+  <div class="card cacat">
+    <div class="label">Cacat (frame ini)</div>
+    <div class="value" id="val-cacat">—</div>
+  </div>
+  <div class="card fps">
+    <div class="label">FPS</div>
+    <div class="value" id="val-fps">—</div>
+  </div>
+  <div class="card frame">
+    <div class="label">Frame ke-</div>
+    <div class="value" id="val-frame">—</div>
+  </div>
+</div>
+
+<!-- Total akumulasi dari server -->
+<div class="totals">
+  <div class="total-card baik">
+    <div class="total-icon">✅</div>
+    <div class="total-info">
+      <div class="label">Total Biji BAIK</div>
+      <div class="value" id="total-baik">0</div>
+    </div>
+  </div>
+  <div class="total-card cacat">
+    <div class="total-icon">❌</div>
+    <div class="total-info">
+      <div class="label">Total Biji CACAT</div>
+      <div class="value" id="total-cacat">0</div>
+    </div>
+  </div>
+</div>
+
+<div class="actions">
+  <button id="btn-reset" onclick="resetLog()">Reset Log</button>
+  <button id="btn-ws"    onclick="reconnect()">Reconnect</button>
+</div>
+
+<div class="log-section" style="margin-top:16px;">
+  <h2>Log Deteksi</h2>
+  <div id="log"></div>
+</div>
+
+<script>
+  const WS_URL = 'ws://localhost:8765'; // ganti jika server di IP lain
+
+  let ws = null;
+
+  function setStatus(connected, text) {
+    document.getElementById('dot').className = 'dot ' + (connected ? 'connected' : 'disconnected');
+    document.getElementById('status-text').textContent = text;
+  }
+
+  function addLog(text, cls = '') {
+    const log  = document.getElementById('log');
+    const entry = document.createElement('div');
+    entry.className = 'entry ' + cls;
+    entry.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+    log.prepend(entry);
+    // Batasi 200 baris
+    while (log.children.length > 200) log.removeChild(log.lastChild);
+  }
+
+  function connect() {
+    setStatus(false, 'Menghubungkan...');
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+      setStatus(true, `Terhubung ke ${WS_URL}`);
+      addLog('WebSocket terhubung ke server.');
+      // Daftar sebagai dashboard
+      ws.send(JSON.stringify({ type: 'register', role: 'dashboard' }));
+    };
+
+    ws.onmessage = (event) => {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === 'detection') {
+        document.getElementById('val-baik').textContent  = msg.baik;
+        document.getElementById('val-cacat').textContent = msg.cacat;
+        document.getElementById('val-fps').textContent   = msg.fps;
+        document.getElementById('val-frame').textContent = msg.frame;
+        document.getElementById('total-baik').textContent  = msg.total_baik;
+        document.getElementById('total-cacat').textContent = msg.total_cacat;
+
+        const cls = msg.cacat > 0 ? 'cacat-entry' : (msg.baik > 0 ? 'baik-entry' : '');
+        addLog(
+          `Frame ${msg.frame} | Baik: ${msg.baik} | Cacat: ${msg.cacat} | ` +
+          `Total Baik: ${msg.total_baik} | Total Cacat: ${msg.total_cacat} | FPS: ${msg.fps}`,
+          cls
+        );
+      }
+
+      else if (msg.type === 'session_stats') {
+        document.getElementById('total-baik').textContent  = msg.total_baik;
+        document.getElementById('total-cacat').textContent = msg.total_cacat;
+        addLog(`Sesi aktif sejak ${msg.started_at || '-'} | Frame: ${msg.frames}`);
+      }
+
+      else if (msg.type === 'detector_disconnected') {
+        setStatus(false, 'Detector terputus — menunggu detector...');
+        addLog('⚠️ Detector (model_detect.py) terputus dari server.', 'cacat-entry');
+      }
+    };
+
+    ws.onclose = () => {
+      setStatus(false, 'Terputus — retry dalam 4 detik...');
+      addLog('Koneksi ke server terputus. Retry...');
+      setTimeout(connect, 4000);
+    };
+
+    ws.onerror = (e) => {
+      setStatus(false, 'Error koneksi.');
+      addLog('WebSocket error: ' + e.message);
+    };
+  }
+
+  function reconnect() {
+    if (ws) ws.close();
+    setTimeout(connect, 500);
+  }
+
+  function resetLog() {
+    document.getElementById('log').innerHTML = '';
+  }
+
+  // Mulai konek
+  connect();
+</script>
+</body>
+</html>

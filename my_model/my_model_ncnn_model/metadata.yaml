@@ -1,0 +1,20 @@
+description: Ultralytics YOLO11s model trained on /content/data.yaml
+author: Ultralytics
+date: '2026-02-20T15:29:30.341056'
+version: 8.4.14
+license: AGPL-3.0 License (https://ultralytics.com/license)
+docs: https://docs.ultralytics.com
+stride: 32
+task: detect
+batch: 1
+imgsz:
+- 320
+- 320
+names:
+  0: baik
+  1: cacat
+args:
+  batch: 1
+  half: false
+channels: 3
+end2end: false
